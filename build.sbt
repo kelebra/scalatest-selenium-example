@@ -1,4 +1,6 @@
-lazy val root = (project in file(".")).settings(projectSettings: _*)
+lazy val root = (project in file("."))
+  .settings(projectSettings: _*)
+  .settings(com.github.retronym.SbtOneJar.oneJarSettings: _*)
 
 lazy val projectSettings =
   Seq(
@@ -12,5 +14,6 @@ lazy val projectSettings =
       "org.seleniumhq.selenium" % "selenium-java" % "2.35.0",
       "com.machinepublishers" % "jbrowserdriver" % "0.14.5",
       "org.codemonkey.simplejavamail" % "simple-java-mail" % "3.1.1"
-    )
+    ),
+    mainClass in oneJar := Some("com.kelebra.demo.InformationExtractor")
   )
