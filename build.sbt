@@ -12,8 +12,9 @@ lazy val projectSettings =
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "2.2.6",
       "org.seleniumhq.selenium" % "selenium-java" % "2.35.0",
-      "com.machinepublishers" % "jbrowserdriver" % "0.14.5",
-      "org.codemonkey.simplejavamail" % "simple-java-mail" % "3.1.1"
+      "com.machinepublishers" % "jbrowserdriver" % "0.14.6",
+      "org.codemonkey.simplejavamail" % "simple-java-mail" % "3.1.1",
+      "com.typesafe" % "config" % "1.3.0"
     ),
     mainClass in oneJar := Some("com.kelebra.demo.InformationExtractor")
   )

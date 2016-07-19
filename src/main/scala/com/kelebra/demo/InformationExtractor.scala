@@ -2,49 +2,41 @@ package com.kelebra.demo
 
 import java.io.File
 import java.util.{Timer, TimerTask}
-import javax.activation.FileDataSource
 
 import com.machinepublishers.jbrowserdriver.JBrowserDriver
-import org.codemonkey.simplejavamail.email.Email
-import org.codemonkey.simplejavamail.{Mailer, TransportStrategy}
+import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually._
 import org.scalatest.selenium.{Driver, WebBrowser}
+
+import scala.collection.JavaConversions._
 
 object InformationExtractor extends App with Driver with WebBrowser {
 
   implicit val webDriver = new JBrowserDriver()
 
-  val host = args(0)
-  val caseNumber = args(1)
+  val config = ConfigFactory.parseURL(this.getClass.getResource("/application.conf"))
 
-  val login = args(2)
-  val password = args(3)
+  val host = args(0)
+
+  val login = args(1)
+  val password = args(2)
 
   val task = new TimerTask {
     override def run(): Unit = {
-      go to args(0)
-      val homePageTitle = pageTitle
 
-      textArea(name("caseNumbers")).value = caseNumber
+      val casesConfig = ConfigFactory.parseFile(new File(config.getString("config.location"))).getConfig("cases")
 
-      click on id("Searchcases")
-
-      eventually {
-        pageTitle != homePageTitle
-      }
-
-      send(
-        captureScreenshot(System.currentTimeMillis().toString),
-        findAll(tagName("td")).toList.map(_.text).grouped(6).map(_.mkString(" ")).mkString("\n"),
-        login,
-        password
-      )
+      casesConfig
+        .entrySet()
+        .map(_.getKey)
+        .map(email => InfoArguments(casesConfig.getString(email), email))
+        .map(arguments => (arguments, caseData(arguments.caseNumber)))
+        .foreach {
+          case (arguments: InfoArguments, caseData: CaseInfo) =>
+            send(login, password, arguments, caseData)
+        }
     }
   }
-
-  val timer = new Timer()
-  timer.scheduleAtFixedRate(task, 0, 86400000)
-
 
   def captureScreenshot(screenshotFileName: String): File = {
     val screenshot = new File(System.getProperty("java.io.tmpdir"), s"$screenshotFileName.png")
@@ -52,16 +44,24 @@ object InformationExtractor extends App with Driver with WebBrowser {
     screenshot
   }
 
-  def send(screenShot: File, text: String, login: String, password: String): Unit = {
-    new Mailer("smtp.gmail.com", 587, login, password, TransportStrategy.SMTP_TLS)
-      .sendMail(
-        new Email.Builder()
-          .from("Me", login)
-          .to("Me", login)
-          .subject("Current status")
-          .addAttachment("Current_status.png", new FileDataSource(screenShot))
-          .text(text)
-          .build()
-      )
+  def caseData(caseNumber: String): CaseInfo = {
+    go to host
+    val homePageTitle = pageTitle
+
+    textArea(name("caseNumbers")).value = caseNumber
+
+    click on id("Searchcases")
+
+    eventually {
+      pageTitle != homePageTitle
+    }
+
+    val text = findAll(tagName("td")).toList.map(_.text).grouped(6).map(_.mkString(" ")).mkString("\n")
+    val screenshot = captureScreenshot(System.currentTimeMillis().toString)
+
+    CaseInfo(caseNumber, text, screenshot)
   }
+
+  val timer = new Timer()
+  timer.scheduleAtFixedRate(task, 0, 86400000)
 }
